@@ -1,0 +1,97 @@
+-- Esquema lógico de referencia. La aplicación crea estas tablas al iniciar.
+-- Para entornos productivos, sustituir create_all por migraciones versionadas (Alembic).
+CREATE TABLE IF NOT EXISTS rooms (
+  id BIGSERIAL PRIMARY KEY,
+  name VARCHAR(120) NOT NULL UNIQUE,
+  site VARCHAR(160),
+  description TEXT,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS racks (
+  id BIGSERIAL PRIMARY KEY,
+  name VARCHAR(120) NOT NULL UNIQUE,
+  room_id BIGINT REFERENCES rooms(id) ON DELETE SET NULL,
+  height_u INTEGER NOT NULL DEFAULT 42 CHECK (height_u BETWEEN 1 AND 100),
+  max_power_w DOUBLE PRECISION CHECK (max_power_w IS NULL OR max_power_w >= 0),
+  notes TEXT,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS equipment (
+  id BIGSERIAL PRIMARY KEY,
+  name VARCHAR(160) NOT NULL,
+  asset_tag VARCHAR(120) UNIQUE,
+  kind VARCHAR(60) NOT NULL DEFAULT 'server',
+  manufacturer VARCHAR(120),
+  model VARCHAR(120),
+  serial_number VARCHAR(160),
+  rack_id BIGINT REFERENCES racks(id) ON DELETE SET NULL,
+  start_u INTEGER CHECK (start_u IS NULL OR start_u >= 1),
+  height_u INTEGER NOT NULL DEFAULT 1 CHECK (height_u >= 1),
+  power_w DOUBLE PRECISION CHECK (power_w IS NULL OR power_w >= 0),
+  status VARCHAR(40) NOT NULL DEFAULT 'planned',
+  notes TEXT,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS interfaces (
+  id BIGSERIAL PRIMARY KEY,
+  equipment_id BIGINT REFERENCES equipment(id) ON DELETE SET NULL,
+  name VARCHAR(120) NOT NULL,
+  medium VARCHAR(60) NOT NULL DEFAULT 'Ethernet cobre',
+  mac_address VARCHAR(32),
+  ip_address VARCHAR(80),
+  vlan VARCHAR(40),
+  connected_to VARCHAR(200),
+  status VARCHAR(40) NOT NULL DEFAULT 'unknown',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS services (
+  id BIGSERIAL PRIMARY KEY,
+  name VARCHAR(160) NOT NULL,
+  description TEXT,
+  equipment_id BIGINT REFERENCES equipment(id) ON DELETE SET NULL,
+  endpoint VARCHAR(300),
+  criticality VARCHAR(30) NOT NULL DEFAULT 'Media',
+  status VARCHAR(40) NOT NULL DEFAULT 'planned',
+  owner VARCHAR(160),
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS power_resources (
+  id BIGSERIAL PRIMARY KEY,
+  name VARCHAR(160) NOT NULL UNIQUE,
+  kind VARCHAR(60) NOT NULL,
+  source VARCHAR(160),
+  capacity_w DOUBLE PRECISION NOT NULL DEFAULT 0 CHECK (capacity_w >= 0),
+  load_w DOUBLE PRECISION NOT NULL DEFAULT 0 CHECK (load_w >= 0),
+  redundancy VARCHAR(40) NOT NULL DEFAULT 'No definida',
+  status VARCHAR(40) NOT NULL DEFAULT 'planned',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS reservations (
+  id BIGSERIAL PRIMARY KEY,
+  resource_type VARCHAR(60) NOT NULL,
+  resource VARCHAR(200) NOT NULL,
+  owner VARCHAR(160) NOT NULL,
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+  status VARCHAR(40) NOT NULL DEFAULT 'Propuesta',
+  notes TEXT,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CHECK (end_date >= start_date)
+);
+CREATE TABLE IF NOT EXISTS events (
+  id BIGSERIAL PRIMARY KEY,
+  severity VARCHAR(30) NOT NULL DEFAULT 'info',
+  category VARCHAR(80) NOT NULL,
+  message TEXT NOT NULL,
+  source VARCHAR(160),
+  acknowledged BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
